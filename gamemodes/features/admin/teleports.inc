@@ -28,3 +28,17 @@ CMD:area51(playerid, params[])
     SetPlayerPos(playerid, 96.47, 1949.38, 17.64);
     return 1;
 }
+
+alias:angelpine("ap","angelp")
+CMD:angelpine(playerid, params[])
+{
+    SetPlayerPos(playerid, -2044.01, -2381.33, 30.63);
+    return 1;
+}
+
+CMD:sf(playerid, params[])
+{
+    SetPlayerPos(playerid, -1600.00, 265.00, 6.00);
+    return 1;
+}
+
