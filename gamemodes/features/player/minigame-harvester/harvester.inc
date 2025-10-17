@@ -1,7 +1,7 @@
 #include <YSI_Coding\y_hooks>
 
 #define HARVESTER_MODEL_ID      532
-#define MAX_HARVEST_POINTS      2
+#define MAX_HARVEST_POINTS      10
 #define HARVEST_TIME           5
 #define CORN_COLOR              0xC2A636FF // Color amarillento del maíz
 
@@ -389,6 +389,13 @@ stock FinishHarvesterMinigame(playerid, bool:giveReward = true)
     
     DisablePlayerCheckpoint(playerid);
     
+    // Guardar el ID del vehículo antes de resetear
+    new vehicleid = INVALID_VEHICLE_ID;
+    if(IsPlayerInHarvester(playerid))
+    {
+        vehicleid = GetPlayerVehicleID(playerid);
+    }
+    
     if(giveReward)
     {
         new reward = 2500 + random(3001); // Entre $2500 y $5500
@@ -399,6 +406,12 @@ stock FinishHarvesterMinigame(playerid, bool:giveReward = true)
         
         // Mensaje de finalización similar al lumberjack
         SendClientMessage(playerid, COLOR_LIGHTGREEN, sprintf("¡Recolectaste $%d, por todo el maíz!", reward));
+        
+        // Respawnear el vehículo cuando se complete todo el minijuego
+        if(vehicleid != INVALID_VEHICLE_ID && IsValidVehicle(vehicleid))
+        {
+            SetVehicleToRespawn(vehicleid);
+        }
     }
     
     ResetHarvesterPlayer(playerid);
@@ -458,7 +471,7 @@ public CheckHarvesterVehicleProximity()
             // Ocultar cualquier mensaje visible
             HideHarvesterVehicleNotif(i);
             
-            // Si tenía trabajo activo, cancelarlo
+            // Si tenía trabajo activo, finalizarlo con recompensa
             if(HarvesterPlayer[i][isActive])
             {
                 // Limpiar timer de cosecha si existe
@@ -476,8 +489,22 @@ public CheckHarvesterVehicleProximity()
                 // Descongelar jugador
                 TogglePlayerControllable(i, 1);
                 
+                // Calcular recompensa proporcional según objetos cosechados
+                new objectsCollected = MAX_HARVEST_POINTS - HarvesterPlayer[i][objectsRemaining];
+                if(objectsCollected > 0)
+                {
+                    // Recompensa proporcional: $100-220 por objeto cosechado
+                    new reward = objectsCollected * (100 + random(121));
+                    GivePlayerMoney(i, reward);
+                    
+                    SendClientMessage(i, COLOR_LIGHTGREEN, sprintf("¡Trabajo finalizado! Cosechaste %d objetos y ganaste $%d", objectsCollected, reward));
+                }
+                else
+                {
+                    SendClientMessage(i, COLOR_FADE3, "Trabajo finalizado sin objetos cosechados.");
+                }
+                
                 ResetHarvesterPlayer(i);
-                SendClientMessage(i, COLOR_FADE3, "[DEBUG] Trabajo finalizado - saliste del vehículo.");
             }
         }
     }
@@ -510,7 +537,7 @@ stock StartHarvesterMinigame(playerid)
     
     // Mostrar mensaje inicial "Cosecha todo el maiz" durante 2.5 segundos
     new cornMessage[64];
-    format(cornMessage, sizeof(cornMessage), "Cosecha todo el ~y~maiz");
+    format(cornMessage, sizeof(cornMessage), "Cosecha todo el ~y~maiz~w~.");
     HarvesterPlayer[playerid][harvestTextDraw] = CreatePlayerTextDraw(playerid, 325.000, 369.000, cornMessage);
     PlayerTextDrawLetterSize(playerid, HarvesterPlayer[playerid][harvestTextDraw], 0.300, 1.500);
     PlayerTextDrawAlignment(playerid, HarvesterPlayer[playerid][harvestTextDraw], 2);
@@ -665,10 +692,6 @@ hook OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
             if(!HarvesterPlayer[playerid][isActive])
             {
                 StartHarvesterMinigame(playerid);
-            }
-            else
-            {
-                CancelHarvesterMinigame(playerid);
             }
             return 1;
         }
